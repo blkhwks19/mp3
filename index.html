@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Untitled Document</title>
+
+<!--
+
+    - sort table (maybe include plugin to sort by column?)
+    - make each one clickable to make it play
+    - set up custom controls for play/pause/seek/etc
+    - get album art to display....
+
+	// to play song:
+	$('#player').prop('src', window.URL.createObjectURL(files[0].file));
+	$('#player').load();
+-->
+
+
+<style>
+body { font-family:Verdana; }
+#music_select { width:93px; }
+#list { margin-top:10px; border:1px solid #000; border-collapse:collapse; text-align:left; width:100%; }
+#list tr { cursor:default; }
+#list th { border:1px solid #000; background-color:#555; color:#eee; padding:3px; font-size:.9em; }
+#list td { border:1px solid #000; padding:3px; }
+.rowHighlight { background-color:#ccc; }
+</style>
+
+<script src="js/jsmediatags.min.js"></script>
+<script src="js/jquery-1.11.2.min.js"></script>
+<script>
+var jsmediatags = window.jsmediatags;
+var MUSIC_FOLDER = 'music';
+var temp = [];
+var files = [];
+
+$(document).ready(function(e) {
+	
+	$('#music_select').change(function(e) {
+		// loop through all files in chosen folder, only add mp3's to temp array
+		var fileList = e.target.files;
+		$.each(fileList, function(index, value){
+			if (value.type === 'audio/mp3'){
+				temp.push(value);
+			}
+		});
+		
+		// get ID3 tags for all mp3's in temp array
+		$.each(temp, function(index, value){
+			getID3(value);
+		});
+    });
+	
+	$(document).on('mouseover', '#list tr', function(){
+		$(this).addClass('rowHighlight');
+		
+		/*var mp3 = getFileByID($(this).data('id'));
+		var picture = (mp3.id3.tags.picture) ? "data:" + mp3.id3.tags.picture.format + ";base64," + window.btoa(mp3.id3.tags.picture.data) : 'images/unknown-album.png';
+		//$('#pic').attr('src', picture);
+		document.getElementById('pic').src = picture;*/
+	}).on('mouseout', '#list tr', function(){
+		$(this).removeClass('rowHighlight');
+	});
+	
+});
+
+function getID3(file)
+{
+	jsmediatags.read(file, {
+		onSuccess:function(tag){
+			// store file and id3 info in new object in master files array
+			// when files array length is equal to temp array length, all files have been read, proceed with mp3 player
+			files.push({id:files.length+1, file:file, id3:tag});
+			if (files.length == temp.length){
+				loadSongs();
+			}
+		},
+		onError:function(error){
+			console.log('ID3 ERROR -> ' + error);
+		}
+	});
+}
+
+function getFileByID(id){
+	var mp3 = '';
+	$.each(files, function(index, value){
+		if (value.id === id){
+			mp3 = value;
+			return false;
+		}
+	});
+	return mp3;
+}
+
+function loadSongs(){
+	console.log(files);
+	$.each(files, function(index, value){
+		// set defaults
+		var title = value.id3.tags.title || '--';
+		var artist = value.id3.tags.artist || '--';
+		var album = value.id3.tags.album || '--';
+		var genre = value.id3.tags.genre || '--';
+		var year = value.id3.tags.year || '--';
+		var duration = (value.id3.tags.TLEN && value.id3.tags.TLEN.data !== '') ? value.id3.tags.TLEN.data : '--'; // convert from ms to mm:ss
+		var size = (value.file.size) ? convertSize(value.file.size) : '--';
+		var track = value.id3.tags.track || '--';
+		
+		var tr = '<tr data-id="' + value.id + '">';
+		tr += '<td>' + title + '</td>';
+		tr += '<td>' + artist + '</td>';
+		tr += '<td>' + album + '</td>';
+		tr += '<td>' + genre + '</td>';
+		tr += '<td>' + year + '</td>';
+		tr += '<td>' + duration + '</td>';
+		tr += '<td>' + size + '</td>';
+		tr += '<td>' + track + '</td>';
+		tr += '</tr>';
+		$('#list').append(tr);
+	});
+}
+
+function convertSize(bytes){
+	var kb = Math.round(bytes / 1024);
+	var mb = kb / 1024;
+	return mb.toFixed(2) + ' MB';
+	//return size.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+</script>
+</head>
+<body>
+
+<input id="music_select" type="file" multiple directory webkitdirectory mozdirectory>
+<audio id="player" controls autoplay>
+    Your browser doesn't support the audio element...
+</audio>
+
+<img id="pic" width="50" height="50">
+
+<table id="list">
+	<tr>
+    	<th>Title</th>
+        <th>Artist</th>
+        <th>Album</th>
+        <th>Genre</th>
+        <th>Year</th>
+        <th>Duration</th>
+        <th>Size</th>
+        <th>Track</th>
+    </tr>
+</table>
+
+</body>
+</html>
